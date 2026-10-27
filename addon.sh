@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# XORVILA PTERODACTYL ADDON MANAGER v2.7 - ENTERPRISE ARIX TOOLS EDITION
-# Features: Deep File & Build Telemetry | Auto-Tools Layout Sync | Cyber Orange UI
+# XORVILA PTERODACTYL ADDON MANAGER v2.8 - ENTERPRISE ARIX TOOLS EDITION
+# Features: Already-Installed Guard | Complete Removal | Auto-Tools Layout Sync
 # ==============================================================================
 
 # --- ANSI Colors (Orange & Black Theme) ---
@@ -38,10 +38,10 @@ show_banner() {
     echo -e "${DARK_ORANGE}║${NC}  ${ORANGE}╚██╗██╔╝██╔═══██╗██╔══██╗██║   ██║██║██║     ██╔══██╗${NC}               ${DARK_ORANGE}║${NC}"
     echo -e "${DARK_ORANGE}║${NC}  ${ORANGE} ╚███╔╝ ██║   ██║██████╔╝██║   ██║██║██║     ███████║${NC}  ${WHITE}ADDON MGR${NC}  ${DARK_ORANGE}║${NC}"
     echo -e "${DARK_ORANGE}║${NC}  ${ORANGE} ██╔██╗ ██║   ██║██╔══██╗╚██╗ ██╔╝██║██║     ██╔══██║${NC}  ${GRAY}Arix Tools${NC}   ${DARK_ORANGE}║${NC}"
-    echo -e "${DARK_ORANGE}║${NC}  ${ORANGE}██╔╝ ██╗╚██████╔╝██║  ██║ ╚████╔╝ ██║███████╗██║  ██║${NC}  ${GRAY}v2.7 Edition${NC}${DARK_ORANGE}║${NC}"
+    echo -e "${DARK_ORANGE}║${NC}  ${ORANGE}██╔╝ ██╗╚██████╔╝██║  ██║ ╚████╔╝ ██║███████╗██║  ██║${NC}  ${GRAY}v2.8 Edition${NC}${DARK_ORANGE}║${NC}"
     echo -e "${DARK_ORANGE}║${NC}  ${ORANGE}╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝  ╚═══╝  ╚═╝╚══════╝╚═╝  ╚═╝${NC}               ${DARK_ORANGE}║${NC}"
     echo -e "${DARK_ORANGE}╠══════════════════════════════════════════════════════════════════════╣${NC}"
-    echo -e "${DARK_ORANGE}║${NC}  ${WHITE}Automated Arix Tools Sidebar, API Linking & Production Build${NC}      ${DARK_ORANGE}║${NC}"
+    echo -e "${DARK_ORANGE}║${NC}  ${WHITE}Smart Guard, Complete Removal & Production Build Engine${NC}           ${DARK_ORANGE}║${NC}"
     echo -e "${DARK_ORANGE}╚══════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -59,7 +59,6 @@ detect_addon_dir() {
             return 0
         fi
     done
-    # Fallback: Create addons directory inside script dir or ptero dir safely
     ADDON_DIR="$SCRIPT_DIR/addons"
     mkdir -p "$ADDON_DIR" 2>/dev/null || ADDON_DIR="/tmp/xorvila-addons"
     mkdir -p "$ADDON_DIR" 2>/dev/null || true
@@ -76,7 +75,7 @@ find_zip() {
     return 1
 }
 
-# --- Panel & Addon Status Checker (Fixed Plugins Logic) ---
+# --- Panel & Addon Status Checker ---
 is_addon_files_present() {
     local key="$1"
     local fe="" be=""
@@ -216,8 +215,13 @@ prepare_deps() {
     echo -e "    ${GREEN}✔ Dependencies verified successfully.${NC}"
 }
 
-# --- Addon Installers ---
+# --- Addon Installers (With Already-Installed Guard) ---
 install_blue() {
+    if is_addon_files_present "blue" && is_route_linked "blue" && is_built_in_assets "blue"; then
+        echo -e "    ${GREEN}ℹ Properties addon is already fully installed & built. Skipping...${NC}"
+        return 0
+    fi
+
     echo -e "${ORANGE}[*] Processing Blue Server Properties...${NC}"
     local zip_path=""
     if zip_path="$(find_zip 'Blue-Server-Properties-Addon-Updated.zip')"; then
@@ -255,7 +259,7 @@ route_block = """    Route::group(['prefix' => '/server-properties'], function (
         Route::put('/', [Client\\Servers\\ServerConfigEditorController::class, 'update']);
     });"""
 if "'/server-properties'" in s:
-    s = re.sub(r"[ \t]*Route::group\(\['prefix'\s*=>\s*'/server-properties'\],\s*function\s*\(\)\s*\{[\s\S]*?\;", lambda _: route_block, s)
+    s = re.sub(r"[ \t]*Route::group\(\['prefix'\s*=>\s*'/server-properties'\],\s*function\s*\(\)\s*\{[\s\S]*?\}\);", lambda _: route_block, s)
 else:
     target = "Route::group(['prefix' => '/settings'], function () {"
     if target in s: s = s.replace(target, route_block + "\n\n    " + target, 1)
@@ -265,6 +269,11 @@ PY
 }
 
 install_plugins() {
+    if is_addon_files_present "plugins" && is_route_linked "plugins" && is_built_in_assets "plugins"; then
+        echo -e "    ${GREEN}ℹ MC Plugins addon is already fully installed & built. Skipping...${NC}"
+        return 0
+    fi
+
     echo -e "${ORANGE}[*] Processing MC Plugins Installer...${NC}"
     local zip_path=""
     if zip_path="$(find_zip 'MC-Plugins-Installer-Addon-Updated.zip')"; then
@@ -276,6 +285,11 @@ install_plugins() {
 }
 
 install_player() {
+    if is_addon_files_present "player" && is_route_linked "player" && is_built_in_assets "player"; then
+        echo -e "    ${GREEN}ℹ Player Manager addon is already fully installed & built. Skipping...${NC}"
+        return 0
+    fi
+
     echo -e "${ORANGE}[*] Processing Player Manager...${NC}"
     local zip_path=""
     if zip_path="$(find_zip 'Player-Manager-Addon-Updated.zip')"; then
@@ -288,6 +302,11 @@ install_player() {
 }
 
 install_version_changer() {
+    if is_addon_files_present "version" && is_route_linked "version" && is_built_in_assets "version"; then
+        echo -e "    ${GREEN}ℹ Version Changer addon is already fully installed & built. Skipping...${NC}"
+        return 0
+    fi
+
     echo -e "${ORANGE}[*] Processing Version Changer...${NC}"
     local zip_path=""
     if zip_path="$(find_zip 'Version-Changer-Addon-Updated.zip')"; then
@@ -324,13 +343,80 @@ vc_routes = """    Route::group(['prefix' => '/version-changer'], function () {
         Route::post('/install', [Client\\Servers\\VersionChanger\\VersionChangerController::class, 'install']);
     });"""
 if "'/version-changer'" in text:
-    text = re.sub(r"[ \t]*Route::group\(\['prefix'\s*=>\s*'/version-changer'\],\s*function\s*\(\)\s*\{[\s\S]*?\;", lambda _: vc_routes, text)
+    text = re.sub(r"[ \t]*Route::group\(\['prefix'\s*=>\s*'/version-changer'\],\s*function\s*\(\)\s*\{[\s\S]*?\}\);", lambda _: vc_routes, text)
 elif 'VersionChangerController::class' not in text:
     target = "Route::group(['prefix' => '/settings'], function () {"
     if target in text: text = text.replace(target, vc_routes + "\n\n    " + target, 1)
 api.write_text(text)
 PY
     echo -e "    ${GREEN}✔ Versions configured successfully.${NC}"
+}
+
+# --- Complete Uninstallation / Removal Function ---
+uninstall_addon() {
+    local key="$1"
+    echo -e "${RED}[*] Completely removing addon: $key ...${NC}"
+    
+    python3 - "$PTERO_DIR" "$key" <<'PY'
+from pathlib import Path
+import re, sys
+
+root = Path(sys.argv[1])
+key = sys.argv[2]
+
+fe_paths = {
+    "blue": ["resources/scripts/components/server/servercfg"],
+    "plugins": ["resources/scripts/components/server/mcplugins"],
+    "player": ["resources/scripts/components/server/players"],
+    "version": ["resources/scripts/components/server/versionchanger"]
+}
+
+be_paths = {
+    "blue": ["app/Http/Controllers/Api/Client/Servers/ServerConfigEditorController.php", "app/Http/Requests/Api/Client/Servers/ServerConfigEditorRequest.php"],
+    "plugins": ["app/Http/Controllers/Api/Client/Servers/McPluginsController.php", "app/Http/Controllers/Api/Client/Servers/PluginInstallerController.php"],
+    "player": ["app/Http/Controllers/Api/Client/Servers/PlayerManagerController.php", "app/Http/Controllers/Api/Client/Servers/PlayerManager"],
+    "version": ["app/Http/Controllers/Api/Client/Servers/VersionChanger", "app/Http/Requests/Api/Client/Servers/VersionChanger"]
+}
+
+# Delete Frontend files/dirs
+for p in fe_paths.get(key, []):
+    target = root / p
+    if target.is_dir():
+        import shutil
+        shutil.rmtree(target)
+        print(f"Removed directory: {target}")
+    elif target.is_file():
+        target.unlink()
+        print(f"Removed file: {target}")
+
+# Delete Backend files/dirs
+for p in be_paths.get(key, []):
+    target = root / p
+    if target.is_dir():
+        import shutil
+        shutil.rmtree(target)
+        print(f"Removed directory: {target}")
+    elif target.is_file():
+        target.unlink()
+        print(f"Removed file: {target}")
+
+# Clean API routes from routes/api-client.php
+api_file = root / "routes/api-client.php"
+if api_file.exists():
+    text = api_file.read_text()
+    if key == "blue":
+        text = re.sub(r"[ \t]*Route::group\(\['prefix'\s*=>\s*'/server-properties'\],\s*function\s*\(\)\s*\{[\s\S]*?\}\);\n?", "", text)
+    elif key == "plugins":
+        text = re.sub(r"[ \t]*Route::group\(\['prefix'\s*=>\s*'/mcplugins'[\s\S]*?\}\);\n?", "", text)
+        text = re.sub(r"[ \t]*Route::group\(\['prefix'\s*=>\s*'/plugins'[\s\S]*?\}\);\n?", "", text)
+    elif key == "player":
+        text = re.sub(r"[ \t]*Route::group\(\['prefix'\s*=>\s*'/players'[\s\S]*?\}\);\n?", "", text)
+    elif key == "version":
+        text = re.sub(r"[ \t]*Route::group\(\['prefix'\s*=>\s*'/version-changer'\],\s*function\s*\(\)\s*\{[\s\S]*?\}\);\n?", "", text)
+    api_file.write_text(text)
+    print("Cleaned API routes.")
+PY
+    echo -e "    ${GREEN}✔ Addon $key removed successfully.${NC}"
 }
 
 # --- Arix Theme Tools Layout Unifier ---
@@ -566,9 +652,10 @@ while true; do
     echo -e "  ${ORANGE}[4]${NC} ${WHITE}Player Manager Addon Only${NC}     ${GRAY}(Players Management)${NC}"
     echo -e "  ${ORANGE}[5]${NC} ${WHITE}Version Changer Addon Only${NC}    ${GRAY}(Minecraft Version Switcher)${NC}"
     echo -e "  ${ORANGE}[6]${NC} ${WHITE}Sync Uploaded Files & Rebuild${NC}  ${GRAY}(Link existing panel files & compile)${NC}"
+    echo -e "  ${ORANGE}[7]${NC} ${WHITE}Uninstall / Remove Addon${NC}     ${GRAY}(Completely delete addon & routes)${NC}"
     echo -e "  ${ORANGE}[0]${NC} ${RED}Exit Manager${NC}"
     echo ""
-    echo -ne "${DARK_ORANGE}┌──(${WHITE}root@xorvila-manager${DARK_ORANGE})-[~]${NC}\n${DARK_ORANGE}└─#${NC} Select an option [0-6]: "
+    echo -ne "${DARK_ORANGE}┌──(${WHITE}root@xorvila-manager${DARK_ORANGE})-[~]${NC}\n${DARK_ORANGE}└─#${NC} Select an option [0-7]: "
     read -r choice </dev/tty
 
     SELECTED=()
@@ -588,12 +675,37 @@ while true; do
                 continue
             fi
             ;;
+        7)
+            echo ""
+            echo -e "  ${ORANGE}Select Addon to Uninstall:${NC}"
+            echo -e "  ${WHITE}1)${NC} Plugins"
+            echo -e "  ${WHITE}2)${NC} Versions"
+            echo -e "  ${WHITE}3)${NC} Properties"
+            echo -e "  ${WHITE}4)${NC} Players"
+            echo -ne "  ${ORANGE}Choice [1-4]: ${NC}"
+            read -r u_choice </dev/tty
+            local target_key=""
+            case $u_choice in
+                1) target_key="plugins" ;;
+                2) target_key="version" ;;
+                3) target_key="blue" ;;
+                4) target_key="player" ;;
+                *) echo -e "${RED}Invalid choice.${NC}"; sleep 1; continue ;;
+            esac
+            
+            uninstall_addon "$target_key"
+            configure_arix_tools_layout
+            build_panel
+            echo -e "\n${GREEN}[✔] Uninstallation complete! Panel rebuilt successfully.${NC}"
+            read -p "Press [Enter] to return to menu..." </dev/tty
+            continue
+            ;;
         0)
             echo -e "\n${ORANGE}[*] Exiting Xorvila Addon Manager. Goodbye!${NC}\n"
             exit 0
             ;;
         *)
-            echo -e "\n${RED}[!] Invalid option. Please select between 0 and 6.${NC}"
+            echo -e "\n${RED}[!] Invalid option. Please select between 0 and 7.${NC}"
             sleep 1
             continue
             ;;
