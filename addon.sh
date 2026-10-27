@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# XORVILA PTERODACTYL ADDON MANAGER v2.6 - ENTERPRISE ARIX TOOLS EDITION
+# XORVILA PTERODACTYL ADDON MANAGER v2.7 - ENTERPRISE ARIX TOOLS EDITION
 # Features: Deep File & Build Telemetry | Auto-Tools Layout Sync | Cyber Orange UI
 # ==============================================================================
 
@@ -38,7 +38,7 @@ show_banner() {
     echo -e "${DARK_ORANGE}║${NC}  ${ORANGE}╚██╗██╔╝██╔═══██╗██╔══██╗██║   ██║██║██║     ██╔══██╗${NC}               ${DARK_ORANGE}║${NC}"
     echo -e "${DARK_ORANGE}║${NC}  ${ORANGE} ╚███╔╝ ██║   ██║██████╔╝██║   ██║██║██║     ███████║${NC}  ${WHITE}ADDON MGR${NC}  ${DARK_ORANGE}║${NC}"
     echo -e "${DARK_ORANGE}║${NC}  ${ORANGE} ██╔██╗ ██║   ██║██╔══██╗╚██╗ ██╔╝██║██║     ██╔══██║${NC}  ${GRAY}Arix Tools${NC}   ${DARK_ORANGE}║${NC}"
-    echo -e "${DARK_ORANGE}║${NC}  ${ORANGE}██╔╝ ██╗╚██████╔╝██║  ██║ ╚████╔╝ ██║███████╗██║  ██║${NC}  ${GRAY}v2.6 Edition${NC}${DARK_ORANGE}║${NC}"
+    echo -e "${DARK_ORANGE}║${NC}  ${ORANGE}██╔╝ ██╗╚██████╔╝██║  ██║ ╚████╔╝ ██║███████╗██║  ██║${NC}  ${GRAY}v2.7 Edition${NC}${DARK_ORANGE}║${NC}"
     echo -e "${DARK_ORANGE}║${NC}  ${ORANGE}╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝  ╚═══╝  ╚═╝╚══════╝╚═╝  ╚═╝${NC}               ${DARK_ORANGE}║${NC}"
     echo -e "${DARK_ORANGE}╠══════════════════════════════════════════════════════════════════════╣${NC}"
     echo -e "${DARK_ORANGE}║${NC}  ${WHITE}Automated Arix Tools Sidebar, API Linking & Production Build${NC}      ${DARK_ORANGE}║${NC}"
@@ -51,7 +51,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# --- Detect Addon Bundles Directory ---
+# --- Detect Addon Bundles Directory Safely ---
 detect_addon_dir() {
     for d in "$SCRIPT_DIR/addons" "$PWD/addons" "$PTERO_DIR/addons" "/root/addons" "/tmp/addons"; do
         if [[ -d "$d" ]]; then
@@ -59,12 +59,15 @@ detect_addon_dir() {
             return 0
         fi
     done
-    ADDON_DIR="$PTERO_DIR/addons"
+    # Fallback: Create addons directory inside script dir or ptero dir safely
+    ADDON_DIR="$SCRIPT_DIR/addons"
+    mkdir -p "$ADDON_DIR" 2>/dev/null || ADDON_DIR="/tmp/xorvila-addons"
+    mkdir -p "$ADDON_DIR" 2>/dev/null || true
 }
 
 find_zip() {
     local zip_name="$1"
-    for d in "$ADDON_DIR" "$SCRIPT_DIR/addons" "$PWD/addons" "$PTERO_DIR/addons" "$PWD" "$PTERO_DIR" "/root/addons" "/root"; do
+    for d in "$ADDON_DIR" "$SCRIPT_DIR/addons" "$PWD/addons" "$PTERO_DIR/addons" "$PWD" "$PTERO_DIR" "/root/addons" "/root" "/tmp/xorvila-addons"; do
         if [[ -n "$d" && -s "$d/$zip_name" ]]; then
             printf '%s' "$d/$zip_name"
             return 0
@@ -73,7 +76,7 @@ find_zip() {
     return 1
 }
 
-# --- Panel & Addon Status Checker ---
+# --- Panel & Addon Status Checker (Fixed Plugins Logic) ---
 is_addon_files_present() {
     local key="$1"
     local fe="" be=""
@@ -85,14 +88,18 @@ is_addon_files_present() {
         plugins)
             fe="$PTERO_DIR/resources/scripts/components/server/mcplugins/PluginsManagerContainer.tsx"
             be="$PTERO_DIR/app/Http/Controllers/Api/Client/Servers/McPluginsController.php"
+            [[ -f "$be" ]] || be="$PTERO_DIR/app/Http/Controllers/Api/Client/Servers/PluginInstallerController.php"
+            [[ -f "$be" ]] || be="$(find "$PTERO_DIR/app/Http/Controllers" -iname "*Plugin*Controller.php" -print -quit 2>/dev/null || true)"
             ;;
         player)
             fe="$PTERO_DIR/resources/scripts/components/server/players/PlayerManagerContainer.tsx"
             be="$PTERO_DIR/app/Http/Controllers/Api/Client/Servers/PlayerManagerController.php"
+            [[ -f "$be" ]] || be="$PTERO_DIR/app/Http/Controllers/Api/Client/Servers/PlayerManager/PlayerManagerController.php"
             ;;
         version)
             fe="$PTERO_DIR/resources/scripts/components/server/versionchanger/VersionChangerContainer.tsx"
             be="$PTERO_DIR/app/Http/Controllers/Api/Client/Servers/VersionChanger/VersionChangerController.php"
+            [[ -f "$be" ]] || be="$PTERO_DIR/app/Http/Controllers/Api/Client/Servers/MinecraftVersionController.php"
             ;;
     esac
     if [[ -n "$fe" && -f "$fe" && -n "$be" && -f "$be" ]]; then
@@ -111,7 +118,7 @@ is_route_linked() {
     [[ -f "$rf" && -f "$af" ]] || return 1
     case "$key" in
         blue)    grep -q "ServerConfigEditor" "$rf" && grep -q "ServerConfigEditorController" "$af" ;;
-        plugins) grep -q "PluginsManagerContainer" "$rf" && grep -qi "plugins" "$af" ;;
+        plugins) grep -q "PluginsManagerContainer" "$rf" && (grep -qi "mcplugins" "$af" || grep -qi "plugin" "$af") ;;
         player)  grep -q "PlayerManagerContainer" "$rf" && grep -q "PlayerManagerController" "$af" ;;
         version) grep -q "VersionChangerContainer" "$rf" && grep -q "VersionChangerController" "$af" ;;
     esac
@@ -123,7 +130,7 @@ is_built_in_assets() {
     [[ -d "$assets_dir" ]] || return 1
     case "$key" in
         blue)    grep -Rqs "server-properties" "$assets_dir" 2>/dev/null ;;
-        plugins) grep -Rqs "mcplugins" "$assets_dir" 2>/dev/null ;;
+        plugins) grep -Rqs "mcplugins" "$assets_dir" 2>/dev/null || grep -Rqs "PluginsManager" "$assets_dir" 2>/dev/null ;;
         player)  grep -Rqs "PlayerManager" "$assets_dir" 2>/dev/null || grep -Rqs "/players" "$assets_dir" 2>/dev/null ;;
         version) grep -Rqs "version-changer" "$assets_dir" 2>/dev/null ;;
     esac
@@ -141,7 +148,7 @@ show_addon_status() {
     check_pterodactyl
     echo -e "${DARK_ORANGE}─── ADDON TELEMETRY & STATUS ─────────────────────────────────────────${NC}"
     echo -e "  ${WHITE}Panel Root      :${NC} ${GREEN}$PTERO_DIR${NC}"
-    echo -e "  ${WHITE}Addon Store Dir :${NC} ${GRAY}${ADDON_DIR:-Not Found}${NC}"
+    echo -e "  ${WHITE}Addon Store Dir :${NC} ${GRAY}${ADDON_DIR}${NC}"
     echo ""
     echo -e "  ${ORANGE}Addon Name (Sidebar)${NC}      ${ORANGE}Panel Status${NC}          ${ORANGE}Zip Bundle${NC}"
     echo -e "  ${GRAY}────────────────────────────  ──────────────────────  ──────────${NC}"
@@ -248,7 +255,7 @@ route_block = """    Route::group(['prefix' => '/server-properties'], function (
         Route::put('/', [Client\\Servers\\ServerConfigEditorController::class, 'update']);
     });"""
 if "'/server-properties'" in s:
-    s = re.sub(r"[ \t]*Route::group\(\['prefix'\s*=>\s*'/server-properties'\],\s*function\s*\(\)\s*\{[\s\S]*?\}\);", lambda _: route_block, s)
+    s = re.sub(r"[ \t]*Route::group\(\['prefix'\s*=>\s*'/server-properties'\],\s*function\s*\(\)\s*\{[\s\S]*?\;", lambda _: route_block, s)
 else:
     target = "Route::group(['prefix' => '/settings'], function () {"
     if target in s: s = s.replace(target, route_block + "\n\n    " + target, 1)
@@ -317,7 +324,7 @@ vc_routes = """    Route::group(['prefix' => '/version-changer'], function () {
         Route::post('/install', [Client\\Servers\\VersionChanger\\VersionChangerController::class, 'install']);
     });"""
 if "'/version-changer'" in text:
-    text = re.sub(r"[ \t]*Route::group\(\['prefix'\s*=>\s*'/version-changer'\],\s*function\s*\(\)\s*\{[\s\S]*?\}\);", lambda _: vc_routes, text)
+    text = re.sub(r"[ \t]*Route::group\(\['prefix'\s*=>\s*'/version-changer'\],\s*function\s*\(\)\s*\{[\s\S]*?\;", lambda _: vc_routes, text)
 elif 'VersionChangerController::class' not in text:
     target = "Route::group(['prefix' => '/settings'], function () {"
     if target in text: text = text.replace(target, vc_routes + "\n\n    " + target, 1)
