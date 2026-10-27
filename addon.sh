@@ -1,308 +1,239 @@
 #!/usr/bin/env bash
-set -Eeuo pipefail
-
 # ==============================================================================
-#  ██╗  ██╗ ██████╗ ██████╗ ██╗   ██╗██╗██╗      █████╗      🎉 GOD-LEVEL EDITION
-#  ╚██╗██╔╝██╔═══██╗██╔══██╗██║   ██║██║██║     ██╔══██╗     White & Orange UI
-#   ╚███╔╝ ██║   ██║██████╔╝██║   ██║██║██║     ███████║     Arix Theme Tools
-#   ██╔██╗ ██║   ██║██╔══██╗╚██╗ ██╔╝██║██║     ██╔══██║     Auto-Build & Sync
-#  ██╔╝ ██╗╚██████╔╝██║  ██║ ╚████╔╝ ██║███████╗██║  ██║     v2.5 Professional
+# XORVILA PTERODACTYL ADDON MANAGER v2.6 - ENTERPRISE ARIX TOOLS EDITION
+# Features: Deep File & Build Telemetry | Auto-Tools Layout Sync | Cyber Orange UI
 # ==============================================================================
 
-# True-Color & Style Definitions (White & Cyberpunk Orange)
-ESC="\033"
-WHITE="${ESC}[97m"
-BOLD_WHITE="${ESC}[1;97m"
-ORANGE="${ESC}[38;5;208m"
-GOLD="${ESC}[38;5;214m"
-RED="${ESC}[38;5;196m"
-GREEN="${ESC}[38;5;46m"
-CYAN="${ESC}[38;5;51m"
-GRAY="${ESC}[38;5;245m"
-DIM="${ESC}[2m"
-BOLD="${ESC}[1m"
-RESET="${ESC}[0m"
+# --- ANSI Colors (Orange & Black Theme) ---
+ORANGE='\033[38;5;208m'
+DARK_ORANGE='\033[38;5;202m'
+WHITE='\033[1;37m'
+GRAY='\033[38;5;244m'
+GREEN='\033[38;5;46m'
+RED='\033[38;5;196m'
+YELLOW='\033[38;5;226m'
+CYAN='\033[38;5;51m'
+NC='\033[0m'
 
-APP_NAME="XORVILA ADDON MANAGER"
+# --- File Paths & Variables ---
+PTERO_DIR="${1:-/var/www/pterodactyl}"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}" 2>/dev/null || echo ".")" 2>/dev/null && pwd || pwd)"
-PANEL_DIR="${1:-/var/www/pterodactyl}"
 ADDON_DIR=""
 WORK_DIR=''
 STAMP="$(date +%Y%m%d-%H%M%S)"
 LOG_FILE="/tmp/xorvila-addon-installer-${STAMP}.log"
 SELECTED=()
 
-# UI Print Helpers
-print_box() {
-  local text="$1"
-  local color="${2:-$ORANGE}"
-  printf "${color}  ┌────────────────────────────────────────────────────────────┐${RESET}\n"
-  printf "${color}  │${RESET} ${BOLD_WHITE}%-58s${RESET} ${color}│${RESET}\n" "$text"
-  printf "${color}  └────────────────────────────────────────────────────────────┘${RESET}\n"
-}
+# --- Root Privilege Check ---
+if [[ $EUID -ne 0 ]]; then
+    echo -e "${RED}[✘] ERROR: This script must be run as root (use sudo).${NC}"
+    exit 1
+fi
 
-say()   { printf "${ORANGE}[✦ %s]${RESET} ${WHITE}%s${RESET}\n" "$APP_NAME" "$*"; }
-ok()    { printf "    ${GREEN}✔${RESET} ${WHITE}%s${RESET}\n" "$*"; }
-warn()  { printf "    ${GOLD}⚠${RESET} ${WHITE}%s${RESET}\n" "$*"; }
-fail()  { printf "    ${RED}✖${RESET} ${WHITE}%s${RESET}\n" "$*" >&2; }
-die()   { fail "$*"; exit 1; }
-
-spinner() {
-  local pid=$1
-  local message="${2:-Processing}"
-  local spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
-  local i=0
-  printf "    ${ORANGE}%s${RESET} " "$message"
-  while kill -0 "$pid" 2>/dev/null; do
-    i=$(( (i+1) % 10 ))
-    printf "\r    ${ORANGE}%s${RESET} ${WHITE}%s${RESET}" "${spin:$i:1}" "$message"
-    sleep 0.1
-  done
-  printf "\r\033[K"
+# --- Header UI ---
+show_banner() {
+    clear
+    echo -e "${DARK_ORANGE}╔══════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${DARK_ORANGE}║${NC}  ${ORANGE}██╗  ██╗ ██████╗ ██████╗ ██╗   ██╗██╗██╗      █████╗ ${NC}               ${DARK_ORANGE}║${NC}"
+    echo -e "${DARK_ORANGE}║${NC}  ${ORANGE}╚██╗██╔╝██╔═══██╗██╔══██╗██║   ██║██║██║     ██╔══██╗${NC}               ${DARK_ORANGE}║${NC}"
+    echo -e "${DARK_ORANGE}║${NC}  ${ORANGE} ╚███╔╝ ██║   ██║██████╔╝██║   ██║██║██║     ███████║${NC}  ${WHITE}ADDON MGR${NC}  ${DARK_ORANGE}║${NC}"
+    echo -e "${DARK_ORANGE}║${NC}  ${ORANGE} ██╔██╗ ██║   ██║██╔══██╗╚██╗ ██╔╝██║██║     ██╔══██║${NC}  ${GRAY}Arix Tools${NC}   ${DARK_ORANGE}║${NC}"
+    echo -e "${DARK_ORANGE}║${NC}  ${ORANGE}██╔╝ ██╗╚██████╔╝██║  ██║ ╚████╔╝ ██║███████╗██║  ██║${NC}  ${GRAY}v2.6 Edition${NC}${DARK_ORANGE}║${NC}"
+    echo -e "${DARK_ORANGE}║${NC}  ${ORANGE}╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝  ╚═══╝  ╚═╝╚══════╝╚═╝  ╚═╝${NC}               ${DARK_ORANGE}║${NC}"
+    echo -e "${DARK_ORANGE}╠══════════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${DARK_ORANGE}║${NC}  ${WHITE}Automated Arix Tools Sidebar, API Linking & Production Build${NC}      ${DARK_ORANGE}║${NC}"
+    echo -e "${DARK_ORANGE}╚══════════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
 }
 
 cleanup() { 
-  [[ -z "$WORK_DIR" || ! -d "$WORK_DIR" ]] || rm -rf -- "$WORK_DIR"; 
+    [[ -z "$WORK_DIR" || ! -d "$WORK_DIR" ]] || rm -rf -- "$WORK_DIR"; 
 }
 trap cleanup EXIT
-trap 'rc=$?; fail "Installer interrupted at line $LINENO (exit $rc). Check log: $LOG_FILE"; exit "$rc"' ERR
 
-banner() {
-  clear
-  printf "${ORANGE}"
-  printf "    ██╗  ██╗ ██████╗ ██████╗ ██╗   ██╗██╗██╗      █████╗ \n"
-  printf "    ╚██╗██╔╝██╔═══██╗██╔══██╗██║   ██║██║██║     ██╔══██╗\n"
-  printf "     ╚███╔╝ ██║   ██║██████╔╝██║   ██║██║██║     ███████║\n"
-  printf "     ██╔██╗ ██║   ██║██╔══██╗╚██╗ ██╔╝██║██║     ██╔══██║\n"
-  printf "    ██╔╝ ██╗╚██████╔╝██║  ██║ ╚████╔╝ ██║███████╗██║  ██║\n"
-  printf "    ╚═╝  ╚═╝ ╚═════╝  ╚═╝  ╚═╝  ╚═══╝  ╚═╝╚══════╝╚═╝  ╚═╝\n"
-  printf "${RESET}\n"
-  printf "${BOLD_WHITE}         ✦ XORVILA PTERODACTYL ADDON MANAGER (ARIX EDITION) ✦         ${RESET}\n"
-  printf "${GRAY}         Deep Status Engine • Auto Tools Layout • Production Build    ${RESET}\n\n"
-}
-
-need_cmd() { command -v "$1" >/dev/null 2>&1 || die "Required command '$1' is missing. Install it and retry."; }
-
+# --- Detect Addon Bundles Directory ---
 detect_addon_dir() {
-  for d in "$SCRIPT_DIR/addons" "$PWD/addons" "$PANEL_DIR/addons" "/root/addons" "/tmp/addons"; do
-    if [[ -d "$d" ]]; then
-      ADDON_DIR="$d"
-      return 0
-    fi
-  done
-  ADDON_DIR="$PANEL_DIR/addons"
+    for d in "$SCRIPT_DIR/addons" "$PWD/addons" "$PTERO_DIR/addons" "/root/addons" "/tmp/addons"; do
+        if [[ -d "$d" ]]; then
+            ADDON_DIR="$d"
+            return 0
+        fi
+    done
+    ADDON_DIR="$PTERO_DIR/addons"
 }
 
 find_zip() {
-  local zip_name="$1"
-  for d in "$ADDON_DIR" "$SCRIPT_DIR/addons" "$PWD/addons" "$PANEL_DIR/addons" "$PWD" "$PANEL_DIR" "/root/addons" "/root"; do
-    if [[ -n "$d" && -s "$d/$zip_name" ]]; then
-      printf '%s' "$d/$zip_name"
-      return 0
-    fi
-  done
-  return 1
+    local zip_name="$1"
+    for d in "$ADDON_DIR" "$SCRIPT_DIR/addons" "$PWD/addons" "$PTERO_DIR/addons" "$PWD" "$PTERO_DIR" "/root/addons" "/root"; do
+        if [[ -n "$d" && -s "$d/$zip_name" ]]; then
+            printf '%s' "$d/$zip_name"
+            return 0
+        fi
+    done
+    return 1
 }
 
+# --- Panel & Addon Status Checker ---
 is_addon_files_present() {
-  local key="$1"
-  local fe="" be=""
-  case "$key" in
-    blue)
-      fe="$PANEL_DIR/resources/scripts/components/server/servercfg/ServerConfigEditor.tsx"
-      be="$PANEL_DIR/app/Http/Controllers/Api/Client/Servers/ServerConfigEditorController.php"
-      ;;
-    plugins)
-      fe="$PANEL_DIR/resources/scripts/components/server/mcplugins/PluginsManagerContainer.tsx"
-      if [[ -f "$PANEL_DIR/app/Http/Controllers/Api/Client/Servers/McPluginsController.php" ]]; then
-        be="$PANEL_DIR/app/Http/Controllers/Api/Client/Servers/McPluginsController.php"
-      else
-        be="$(find "$PANEL_DIR/app/Http/Controllers" -iname "*Plugin*Controller.php" -print -quit 2>/dev/null || true)"
-      fi
-      ;;
-    player)
-      fe="$PANEL_DIR/resources/scripts/components/server/players/PlayerManagerContainer.tsx"
-      if [[ -f "$PANEL_DIR/app/Http/Controllers/Api/Client/Servers/PlayerManagerController.php" ]]; then
-        be="$PANEL_DIR/app/Http/Controllers/Api/Client/Servers/PlayerManagerController.php"
-      else
-        be="$PANEL_DIR/app/Http/Controllers/Api/Client/Servers/PlayerManager/PlayerManagerController.php"
-      fi
-      ;;
-    version)
-      fe="$PANEL_DIR/resources/scripts/components/server/versionchanger/VersionChangerContainer.tsx"
-      if [[ -f "$PANEL_DIR/app/Http/Controllers/Api/Client/Servers/VersionChanger/VersionChangerController.php" ]]; then
-        be="$PANEL_DIR/app/Http/Controllers/Api/Client/Servers/VersionChanger/VersionChangerController.php"
-      else
-        be="$PANEL_DIR/app/Http/Controllers/Api/Client/Servers/MinecraftVersionController.php"
-      fi
-      ;;
-  esac
-
-  if [[ -n "$fe" && -f "$fe" && -n "$be" && -f "$be" ]]; then
-    return 0
-  elif [[ ( -n "$fe" && -f "$fe" ) || ( -n "$be" && -f "$be" ) ]]; then
-    return 2
-  else
-    return 1
-  fi
+    local key="$1"
+    local fe="" be=""
+    case "$key" in
+        blue)
+            fe="$PTERO_DIR/resources/scripts/components/server/servercfg/ServerConfigEditor.tsx"
+            be="$PTERO_DIR/app/Http/Controllers/Api/Client/Servers/ServerConfigEditorController.php"
+            ;;
+        plugins)
+            fe="$PTERO_DIR/resources/scripts/components/server/mcplugins/PluginsManagerContainer.tsx"
+            be="$PTERO_DIR/app/Http/Controllers/Api/Client/Servers/McPluginsController.php"
+            ;;
+        player)
+            fe="$PTERO_DIR/resources/scripts/components/server/players/PlayerManagerContainer.tsx"
+            be="$PTERO_DIR/app/Http/Controllers/Api/Client/Servers/PlayerManagerController.php"
+            ;;
+        version)
+            fe="$PTERO_DIR/resources/scripts/components/server/versionchanger/VersionChangerContainer.tsx"
+            be="$PTERO_DIR/app/Http/Controllers/Api/Client/Servers/VersionChanger/VersionChangerController.php"
+            ;;
+    es:
+    if [[ -n "$fe" && -f "$fe" && -n "$be" && -f "$be" ]]; then
+        return 0
+    elif [[ ( -n "$fe" && -f "$fe" ) || ( -n "$be" && -f "$be" ) ]]; then
+        return 2
+    else
+        return 1
+    fi
 }
 
 is_route_linked() {
-  local key="$1"
-  local rf="$PANEL_DIR/resources/scripts/routers/routes.ts"
-  local af="$PANEL_DIR/routes/api-client.php"
-  [[ -f "$rf" && -f "$af" ]] || return 1
-  case "$key" in
-    blue)    grep -q "ServerConfigEditor" "$rf" && grep -q "ServerConfigEditorController" "$af" ;;
-    plugins) grep -q "PluginsManagerContainer" "$rf" && grep -qi "plugins" "$af" ;;
-    player)  grep -q "PlayerManagerContainer" "$rf" && grep -q "PlayerManagerController" "$af" ;;
-    version) grep -q "VersionChangerContainer" "$rf" && grep -q "VersionChangerController" "$af" ;;
-  esac
+    local key="$1"
+    local rf="$PTERO_DIR/resources/scripts/routers/routes.ts"
+    local af="$PTERO_DIR/routes/api-client.php"
+    [[ -f "$rf" && -f "$af" ]] || return 1
+    case "$key" in
+        blue)    grep -q "ServerConfigEditor" "$rf" && grep -q "ServerConfigEditorController" "$af" ;;
+        plugins) grep -q "PluginsManagerContainer" "$rf" && grep -qi "plugins" "$af" ;;
+        player)  grep -q "PlayerManagerContainer" "$rf" && grep -q "PlayerManagerController" "$af" ;;
+        version) grep -q "VersionChangerContainer" "$rf" && grep -q "VersionChangerController" "$af" ;;
+    esac
 }
 
 is_built_in_assets() {
-  local key="$1"
-  local assets_dir="$PANEL_DIR/public/assets"
-  [[ -d "$assets_dir" ]] || return 1
-  case "$key" in
-    blue)    grep -Rqs "server-properties" "$assets_dir" 2>/dev/null ;;
-    plugins) grep -Rqs "mcplugins" "$assets_dir" 2>/dev/null ;;
-    player)  grep -Rqs "PlayerManager" "$assets_dir" 2>/dev/null || grep -Rqs "/players" "$assets_dir" 2>/dev/null ;;
-    version) grep -Rqs "version-changer" "$assets_dir" 2>/dev/null ;;
-  esac
+    local key="$1"
+    local assets_dir="$PTERO_DIR/public/assets"
+    [[ -d "$assets_dir" ]] || return 1
+    case "$key" in
+        blue)    grep -Rqs "server-properties" "$assets_dir" 2>/dev/null ;;
+        plugins) grep -Rqs "mcplugins" "$assets_dir" 2>/dev/null ;;
+        player)  grep -Rqs "PlayerManager" "$assets_dir" 2>/dev/null || grep -Rqs "/players" "$assets_dir" 2>/dev/null ;;
+        version) grep -Rqs "version-changer" "$assets_dir" 2>/dev/null ;;
+    esac
+}
+
+check_pterodactyl() {
+    if [[ ! -d "$PTERO_DIR" ]] || [[ ! -f "$PTERO_DIR/artisan" ]]; then
+        echo -e "${RED}[✘] CRITICAL: Pterodactyl Panel root not detected at $PTERO_DIR!${NC}"
+        exit 1
+    fi
+    detect_addon_dir
 }
 
 show_addon_status() {
-  printf "${ORANGE}  ┌──────────────────────────────────────────────────────────────────────────┐${RESET}\n"
-  printf "${ORANGE}  │${RESET} ${BOLD_WHITE}%-27s %-28s %-16s${RESET} ${ORANGE}│${RESET}\n" " ADDON (TOOLS SIDEBAR)" " PANEL STATUS" " BUNDLE"
-  printf "${ORANGE}  ├──────────────────────────────────────────────────────────────────────────┤${RESET}\n"
+    check_pterodactyl
+    echo -e "${DARK_ORANGE}─── ADDON TELEMETRY & STATUS ─────────────────────────────────────────${NC}"
+    echo -e "  ${WHITE}Panel Root      :${NC} ${GREEN}$PTERO_DIR${NC}"
+    echo -e "  ${WHITE}Addon Store Dir :${NC} ${GRAY}${ADDON_DIR:-Not Found}${NC}"
+    echo ""
+    echo -e "  ${ORANGE}Addon Name (Sidebar)${NC}      ${ORANGE}Panel Status${NC}          ${ORANGE}Zip Bundle${NC}"
+    echo -e "  ${GRAY}────────────────────────────  ──────────────────────  ──────────${NC}"
 
-  local items=(
-    "plugins|Plugins (/mcplugins)|MC-Plugins-Installer-Addon-Updated.zip"
-    "version|Versions (/versions)|Version-Changer-Addon-Updated.zip"
-    "blue|Properties (/properties)|Blue-Server-Properties-Addon-Updated.zip"
-    "player|Players (/players)|Player-Manager-Addon-Updated.zip"
-  )
+    local items=(
+        "plugins|Plugins (/mcplugins)|MC-Plugins-Installer-Addon-Updated.zip"
+        "version|Versions (/versions)|Version-Changer-Addon-Updated.zip"
+        "blue|Properties (/properties)|Blue-Server-Properties-Addon-Updated.zip"
+        "player|Players (/players)|Player-Manager-Addon-Updated.zip"
+    )
 
-  for entry in "${items[@]}"; do
-    IFS='|' read -r key label zip_name <<< "$entry"
-    local p_status="" z_status=""
+    for entry in "${items[@]}"; do
+        IFS='|' read -r key label zip_name <<< "$entry"
+        local p_status="" z_status=""
 
-    if is_addon_files_present "$key"; then
-      if is_route_linked "$key"; then
-        if is_built_in_assets "$key"; then
-          p_status="${GREEN}✔ INSTALLED & BUILT${RESET}"
+        if is_addon_files_present "$key"; then
+            if is_route_linked "$key"; then
+                if is_built_in_assets "$key"; then
+                    p_status="${GREEN}● INSTALLED & BUILT${NC}"
+                else
+                    p_status="${YELLOW}⚠ LINKED (Need Build)${NC}"
+                fi
+            else
+                p_status="${CYAN}⚠ UPLOADED (Unlinked)${NC}"
+            fi
         else
-          p_status="${GOLD}⚠ LINKED (Need Rebuild)${RESET}"
+            rc=$?
+            if [[ $rc -eq 2 ]]; then
+                p_status="${YELLOW}⚠ PARTIAL FILES${NC}"
+            else
+                p_status="${RED}○ NOT FOUND${NC}"
+            fi
         fi
-      else
-        p_status="${CYAN}⚠ UPLOADED (Unlinked)${RESET}"
-      fi
-    else
-      rc=$?
-      if [[ $rc -eq 2 ]]; then
-        p_status="${GOLD}⚠ PARTIAL FILES${RESET}"
-      else
-        p_status="${RED}✖ NOT FOUND${RESET}"
-      fi
-    fi
 
-    if find_zip "$zip_name" >/dev/null 2>&1; then
-      z_status="${GREEN}✔ Zip Ready${RESET}"
-    else
-      z_status="${GRAY}No Zip${RESET}"
-    fi
+        if find_zip "$zip_name" >/dev/null 2>&1; then
+            z_status="${GREEN}✔ Ready${NC}"
+        else
+            z_status="${GRAY}Missing${NC}"
+        fi
 
-    printf "${ORANGE}  │${RESET} ${WHITE}%-27s${RESET} %-36b %-20b ${ORANGE}│${RESET}\n" "  $label" "$p_status" "$z_status"
-  done
-  printf "${ORANGE}  └──────────────────────────────────────────────────────────────────────────┘${RESET}\n\n"
+        printf "  %-28s  %-22s  %-10s\n" "${WHITE}${label}${NC}" "$p_status" "$z_status"
+    done
+    echo -e "${DARK_ORANGE}──────────────────────────────────────────────────────────────────────${NC}"
+    echo ""
 }
 
-check_panel() {
-  [[ -d "$PANEL_DIR" ]] || die "Panel directory not found: $PANEL_DIR"
-  [[ -f "$PANEL_DIR/artisan" && -f "$PANEL_DIR/routes/api-client.php" && -f "$PANEL_DIR/resources/scripts/routers/routes.ts" ]] || die "'$PANEL_DIR' is not a valid Pterodactyl source root."
-  detect_addon_dir
-  ok "Pterodactyl root verified: ${WHITE}$PANEL_DIR${RESET}"
-  show_addon_status
-}
-
-confirm() { 
-  local answer; 
-  printf "${GOLD}  ?${RESET} ${WHITE}%s [y/N]: ${RESET}" "$1"
-  read -r answer; 
-  [[ "$answer" =~ ^([yY]|[yY][eE][sS])$ ]]; 
-}
-
+# --- Dependency Preparation ---
 prepare_deps() {
-  need_cmd php; need_cmd python3
-  php -v >/dev/null 2>&1 || die 'PHP runtime failure.'
-  [[ -f "$PANEL_DIR/composer.json" ]] || die 'composer.json missing.'
-  
-  if [[ ! -d "$PANEL_DIR/vendor" ]]; then
-    warn "Composer dependencies missing."
-    confirm "Run composer install now?" || die 'Cancelled.'
-    need_cmd composer
-    (cd "$PANEL_DIR" && composer install --no-dev --optimize-autoloader) 2>&1 | tee -a "$LOG_FILE" &
-    spinner $! "Installing Composer Packages..."
-    ok "Composer packages ready"
-  fi
-
-  if [[ ! -d "$PANEL_DIR/node_modules" ]]; then
-    warn "Frontend node_modules/ missing."
-    if confirm "Install node modules automatically?"; then
-      if [[ -f "$PANEL_DIR/yarn.lock" ]] && command -v yarn >/dev/null 2>&1; then
-        (cd "$PANEL_DIR" && yarn install --frozen-lockfile) 2>&1 | tee -a "$LOG_FILE" &
-      else
-        (cd "$PANEL_DIR" && npm ci) 2>&1 | tee -a "$LOG_FILE" &
-      fi
-      spinner $! "Installing Frontend Modules..."
-      ok "Frontend modules ready"
-    else
-      die 'Cancelled: Node modules required to build panel.'
+    echo -e "${ORANGE}[*] Checking runtime dependencies...${NC}"
+    command -v php >/dev/null 2>&1 || { echo -e "${RED}[✘] PHP is required.${NC}"; exit 1; }
+    command -v python3 >/dev/null 2>&1 || { echo -e "${RED}[✘] Python3 is required.${NC}"; exit 1; }
+    
+    if [[ ! -d "$PTERO_DIR/vendor" ]]; then
+        echo -e "${YELLOW}[!] Composer vendor folder missing. Installing dependencies...${NC}"
+        (cd "$PTERO_DIR" && composer install --no-dev --optimize-autoloader)
     fi
-  fi
+    if [[ ! -d "$PTERO_DIR/node_modules" ]]; then
+        echo -e "${YELLOW}[!] Node modules missing. Installing frontend packages...${NC}"
+        if [[ -f "$PTERO_DIR/yarn.lock" ]] && command -v yarn >/dev/null 2>&1; then
+            (cd "$PTERO_DIR" && yarn install --frozen-lockfile)
+        else
+            (cd "$PTERO_DIR" && npm ci)
+        fi
+    fi
+    echo -e "    ${GREEN}✔ Dependencies verified successfully.${NC}"
 }
 
-extract_addon() {
-  local zip_path="$1" target="$2"
-  need_cmd unzip
-  mkdir -p "$target"
-  unzip -q "$zip_path" -d "$target"
-}
-
+# --- Addon Installers ---
 install_blue() {
-  say 'Processing Blue Server Properties (Properties)...'
-  local zip_path=""
-  if zip_path="$(find_zip 'Blue-Server-Properties-Addon-Updated.zip')"; then
-    local src="$WORK_DIR/blue"
-    extract_addon "$zip_path" "$src"
-    python3 "$src/install.py" "$PANEL_DIR" 2>&1 | tee -a "$LOG_FILE" || true
-  fi
+    echo -e "${ORANGE}[*] Processing Blue Server Properties...${NC}"
+    local zip_path=""
+    if zip_path="$(find_zip 'Blue-Server-Properties-Addon-Updated.zip')"; then
+        local src="$WORK_DIR/blue"
+        mkdir -p "$src" && unzip -q "$zip_path" -d "$src"
+        python3 "$src/install.py" "$PTERO_DIR" 2>&1 | tee -a "$LOG_FILE" || true
+    fi
 
-  python3 - "$PANEL_DIR" <<'PY'
+    python3 - "$PTERO_DIR" <<'PY'
 from pathlib import Path
 import re, sys
-
 root = Path(sys.argv[1])
 req_path = root / "app/Http/Requests/Api/Client/Servers/ServerConfigEditorRequest.php"
 if not req_path.exists():
     req_path.parent.mkdir(parents=True, exist_ok=True)
     req_path.write_text("""<?php
-
 namespace Pterodactyl\\Http\\Requests\\Api\\Client\\Servers;
-
 use Pterodactyl\\Models\\Permission;
 use Pterodactyl\\Http\\Requests\\Api\\Client\\ClientApiRequest;
-
-class ServerConfigEditorRequest extends ClientApiRequest
-{
-    public function permission(): string
-    {
-        return Permission::ACTION_FILE_READ_CONTENT;
-    }
+class ServerConfigEditorRequest extends ClientApiRequest {
+    public function permission(): string { return Permission::ACTION_FILE_READ_CONTENT; }
 }
 """)
-
 api_file = root / "routes/api-client.php"
 s = api_file.read_text()
 route_block = """    Route::group(['prefix' => '/server-properties'], function () {
@@ -316,71 +247,46 @@ route_block = """    Route::group(['prefix' => '/server-properties'], function (
         Route::post('/save', [Client\\Servers\\ServerConfigEditorController::class, 'update']);
         Route::put('/', [Client\\Servers\\ServerConfigEditorController::class, 'update']);
     });"""
-
 if "'/server-properties'" in s:
     s = re.sub(r"[ \t]*Route::group\(\['prefix'\s*=>\s*'/server-properties'\],\s*function\s*\(\)\s*\{[\s\S]*?\}\);", lambda _: route_block, s)
 else:
     target = "Route::group(['prefix' => '/settings'], function () {"
-    if target in s:
-        s = s.replace(target, route_block + "\n\n    " + target, 1)
+    if target in s: s = s.replace(target, route_block + "\n\n    " + target, 1)
 api_file.write_text(s)
-
-tsx_path = root / "resources/scripts/components/server/servercfg/ServerConfigEditor.tsx"
-if tsx_path.exists():
-    code = tsx_path.read_text()
-    code = code.replace("@/api/server/properties/", "@/api/server/servercfg/")
-    code = code.replace("@/components/server/properties/", "@/components/server/servercfg/")
-    if "const [formKey, setFormKey]" not in code:
-        code = code.replace("const [filterText, setFilterText] = useState('');", "const [filterText, setFilterText] = useState('');\n    const [formKey, setFormKey] = useState(0);")
-    code = code.replace("<Formik onSubmit={handleSubmit} initialValues={data.defaults}>", "<Formik key={formKey} enableReinitialize onSubmit={handleSubmit} initialValues={data.defaults}>")
-    old_btn = "onClick={() => resetForm()}"
-    new_btn = """onClick={() => {
-                                        resetForm({ values: data.defaults });
-                                        setFormKey((prev) => prev + 1);
-                                        mutate();
-                                        addFlash({
-                                            key: 'servercfg:editor',
-                                            type: 'info',
-                                            message: 'Changes have been reset to saved server configuration.',
-                                        });
-                                    }}"""
-    if old_btn in code:
-        code = code.replace(old_btn, new_btn)
-    tsx_path.write_text(code)
 PY
-  ok 'Properties configured successfully'
+    echo -e "    ${GREEN}✔ Properties configured successfully.${NC}"
 }
 
 install_plugins() {
-  say 'Processing MC Plugins Installer (Plugins)...'
-  local zip_path=""
-  if zip_path="$(find_zip 'MC-Plugins-Installer-Addon-Updated.zip')"; then
-    local src="$WORK_DIR/plugins"
-    extract_addon "$zip_path" "$src"
-    bash "$src/install.sh" "$PANEL_DIR" 2>&1 | tee -a "$LOG_FILE" || true
-  fi
-  ok 'Plugins configured successfully'
+    echo -e "${ORANGE}[*] Processing MC Plugins Installer...${NC}"
+    local zip_path=""
+    if zip_path="$(find_zip 'MC-Plugins-Installer-Addon-Updated.zip')"; then
+        local src="$WORK_DIR/plugins"
+        mkdir -p "$src" && unzip -q "$zip_path" -d "$src"
+        [[ -f "$src/install.sh" ]] && bash "$src/install.sh" "$PTERO_DIR" 2>&1 | tee -a "$LOG_FILE" || true
+    fi
+    echo -e "    ${GREEN}✔ Plugins configured successfully.${NC}"
 }
 
 install_player() {
-  say 'Processing Player Manager (Players)...'
-  local zip_path=""
-  if zip_path="$(find_zip 'Player-Manager-Addon-Updated.zip')"; then
-    local src="$WORK_DIR/player"
-    extract_addon "$zip_path" "$src"
-    (cd "$src" && tar -cf - app resources) | (cd "$PANEL_DIR" && tar -xf -) 2>/dev/null || true
-    [[ -f "$src/install-player-manager.sh" ]] && (cd "$PANEL_DIR" && bash "$src/install-player-manager.sh") 2>&1 | tee -a "$LOG_FILE" || true
-  fi
-  ok 'Players configured successfully'
+    echo -e "${ORANGE}[*] Processing Player Manager...${NC}"
+    local zip_path=""
+    if zip_path="$(find_zip 'Player-Manager-Addon-Updated.zip')"; then
+        local src="$WORK_DIR/player"
+        mkdir -p "$src" && unzip -q "$zip_path" -d "$src"
+        (cd "$src" && tar -cf - app resources) | (cd "$PTERO_DIR" && tar -xf -) 2>/dev/null || true
+        [[ -f "$src/install-player-manager.sh" ]] && (cd "$PTERO_DIR" && bash "$src/install-player-manager.sh") 2>&1 | tee -a "$LOG_FILE" || true
+    fi
+    echo -e "    ${GREEN}✔ Players configured successfully.${NC}"
 }
 
 install_version_changer() {
-  say 'Processing Version Changer (Versions)...'
-  local zip_path=""
-  if zip_path="$(find_zip 'Version-Changer-Addon-Updated.zip')"; then
-    local src="$WORK_DIR/version-changer"
-    extract_addon "$zip_path" "$src"
-    python3 - "$PANEL_DIR" "$src" <<'PY'
+    echo -e "${ORANGE}[*] Processing Version Changer...${NC}"
+    local zip_path=""
+    if zip_path="$(find_zip 'Version-Changer-Addon-Updated.zip')"; then
+        local src="$WORK_DIR/version-changer"
+        mkdir -p "$src" && unzip -q "$zip_path" -d "$src"
+        python3 - "$PTERO_DIR" "$src" <<'PY'
 from pathlib import Path
 import shutil, sys
 root, src = Path(sys.argv[1]), Path(sys.argv[2])
@@ -395,9 +301,9 @@ for rel in ['app/Http/Controllers/Api/Client/Servers/VersionChanger', 'app/Http/
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(f, dest)
 PY
-  fi
+    fi
 
-  python3 - "$PANEL_DIR" <<'PY'
+    python3 - "$PTERO_DIR" <<'PY'
 from pathlib import Path
 import re, sys
 root = Path(sys.argv[1])
@@ -414,16 +320,16 @@ if "'/version-changer'" in text:
     text = re.sub(r"[ \t]*Route::group\(\['prefix'\s*=>\s*'/version-changer'\],\s*function\s*\(\)\s*\{[\s\S]*?\}\);", lambda _: vc_routes, text)
 elif 'VersionChangerController::class' not in text:
     target = "Route::group(['prefix' => '/settings'], function () {"
-    if target in text:
-        text = text.replace(target, vc_routes + "\n\n    " + target, 1)
+    if target in text: text = text.replace(target, vc_routes + "\n\n    " + target, 1)
 api.write_text(text)
 PY
-  ok 'Versions configured successfully'
+    echo -e "    ${GREEN}✔ Versions configured successfully.${NC}"
 }
 
+# --- Arix Theme Tools Layout Unifier ---
 configure_arix_tools_layout() {
-  say 'Injecting Arix Tools Section under Management...'
-  python3 - "$PANEL_DIR" <<'PY'
+    echo -e "${ORANGE}[*] Injecting Arix Tools Section under Management...${NC}"
+    python3 - "$PTERO_DIR" <<'PY'
 from pathlib import Path
 import sys
 
@@ -622,97 +528,92 @@ if re_file.exists():
         el = el.replace(switch_target, switch_tools, 1)
         re_file.write_text(el)
 PY
-  ok 'Arix Tools navigation injected'
+    echo -e "    ${GREEN}✔ Arix Tools section injected successfully.${NC}"
 }
 
 build_panel() {
-  say 'Clearing cache & compiling frontend assets...'
-  (cd "$PANEL_DIR" && php artisan route:clear && php artisan optimize:clear) >> "$LOG_FILE" 2>&1 &
-  spinner $! "Clearing Laravel Cache..."
-  ok "Cache cleared"
+    echo -e "${ORANGE}[*] Clearing cache and rebuilding production frontend assets...${NC}"
+    (cd "$PTERO_DIR" && php artisan route:clear && php artisan optimize:clear) >> "$LOG_FILE" 2>&1
+    echo -e "    ${GREEN}✔ Laravel cache cleared.${NC}"
 
-  if [[ -f "$PANEL_DIR/yarn.lock" ]] && command -v yarn >/dev/null 2>&1; then
-    (cd "$PANEL_DIR" && yarn build:production) >> "$LOG_FILE" 2>&1 &
-  elif [[ -f "$PANEL_DIR/package.json" ]] && command -v npm >/dev/null 2>&1; then
-    (cd "$PANEL_DIR" && npm run build:production) >> "$LOG_FILE" 2>&1 &
-  else
-    warn "No frontend build manager found. Skipping asset compilation."
-    return 0
-  fi
-  spinner $! "Building Production Assets (Webpack/Vite)..."
-  ok "Frontend assets compiled successfully"
-
-  chown -R www-data:www-data "$PANEL_DIR"/* 2>/dev/null || true
+    if [[ -f "$PTERO_DIR/yarn.lock" ]] && command -v yarn >/dev/null 2>&1; then
+        (cd "$PTERO_DIR" && yarn build:production) >> "$LOG_FILE" 2>&1
+    elif [[ -f "$PTERO_DIR/package.json" ]] && command -v npm >/dev/null 2>&1; then
+        (cd "$PTERO_DIR" && npm run build:production) >> "$LOG_FILE" 2>&1
+    else
+        echo -e "${YELLOW}[!] Frontend build manager not found. Skipping build.${NC}"
+        return 0
+    fi
+    echo -e "    ${GREEN}✔ Production assets built successfully.${NC}"
+    chown -R www-data:www-data "$PTERO_DIR"/* 2>/dev/null || true
 }
 
-menu() {
-  printf "\n${ORANGE}  ┌────────────────────────────────────────────────────────────┐${RESET}\n"
-  printf "${ORANGE}  │${RESET} ${BOLD_WHITE}                   SELECT INSTALLATION MODE                 ${RESET}${ORANGE}│${RESET}\n"
-  printf "${ORANGE}  ├────────────────────────────────────────────────────────────┤${RESET}\n"
-  printf "${ORANGE}  │${RESET}   ${BOLD}1)${RESET} ${WHITE}Full Setup / Install All 4 Addons & Build               ${ORANGE}│${RESET}\n"
-  printf "${ORANGE}  │${RESET}   ${BOLD}2)${RESET} ${WHITE}Properties Addon Only                                  ${ORANGE}│${RESET}\n"
-  printf "${ORANGE}  │${RESET}   ${BOLD}3)${RESET} ${WHITE}Plugins Addon Only                                     ${ORANGE}│${RESET}\n"
-  printf "${ORANGE}  │${RESET}   ${BOLD}4)${RESET} ${WHITE}Player Manager Addon Only                              ${ORANGE}│${RESET}\n"
-  printf "${ORANGE}  │${RESET}   ${BOLD}5)${RESET} ${WHITE}Version Changer Addon Only                             ${ORANGE}│${RESET}\n"
-  printf "${ORANGE}  │${RESET}   ${BOLD}6)${RESET} ${WHITE}Select Multiple Custom Addons                          ${ORANGE}│${RESET}\n"
-  printf "${ORANGE}  │${RESET}   ${BOLD}7)${RESET} ${WHITE}Sync Uploaded Files & Rebuild Only                     ${ORANGE}│${RESET}\n"
-  printf "${ORANGE}  │${RESET}   ${BOLD}0)${RESET} ${WHITE}Exit Manager                                           ${ORANGE}│${RESET}\n"
-  printf "${ORANGE}  └────────────────────────────────────────────────────────────┘${RESET}\n\n"
-  
-  local choice
-  printf "${GOLD}  ➜${RESET} ${WHITE}Enter your choice [0-7]: ${RESET}"
-  read -r choice
-  case "$choice" in
-    1) SELECTED=(blue plugins player version) ;;
-    2) SELECTED=(blue) ;;
-    3) SELECTED=(plugins) ;;
-    4) SELECTED=(player) ;;
-    5) SELECTED=(version) ;;
-    6)
-      for entry in 'blue:Properties' 'plugins:Plugins' 'player:Players' 'version:Versions'; do
-        key="${entry%%:*}"; label="${entry#*:}"
-        if confirm "Process $label addon?"; then SELECTED+=("$key"); fi
-      done
-      ((${#SELECTED[@]} > 0)) || die 'No addons selected.'
-      ;;
-    7)
-      for key in blue plugins player version; do
-        if is_addon_files_present "$key"; then SELECTED+=("$key"); fi
-      done
-      ((${#SELECTED[@]} > 0)) || die "No uploaded addon files found in $PANEL_DIR!"
-      ;;
-    0) exit 0 ;;
-    *) die 'Invalid selection.' ;;
-  esac
-}
+# --- Main Interactive Menu Loop ---
+while true; do
+    show_banner
+    show_addon_status
 
-main() {
-  banner
-  need_cmd tee; need_cmd find; need_cmd tar
-  check_panel
-  menu
-  printf '\n'
-  confirm "Proceed with selected operations?" || die 'Operation cancelled.'
-  prepare_deps
-  WORK_DIR="$(mktemp -d -t xorvila-addon.XXXXXX)"
-  touch "$LOG_FILE"
-  
-  for addon in "${SELECTED[@]}"; do
-    case "$addon" in
-      blue) install_blue ;;
-      plugins) install_plugins ;;
-      player) install_player ;;
-      version) install_version_changer ;;
+    echo -e "  ${ORANGE}[1]${NC} ${WHITE}Install / Setup All 4 Addons${NC}  ${GRAY}(Plugins, Versions, Properties, Players)${NC}"
+    echo -e "  ${ORANGE}[2]${NC} ${WHITE}Properties Addon Only${NC}        ${GRAY}(Blue Server Properties)${NC}"
+    echo -e "  ${ORANGE}[3]${NC} ${WHITE}Plugins Addon Only${NC}           ${GRAY}(MC Plugins Installer)${NC}"
+    echo -e "  ${ORANGE}[4]${NC} ${WHITE}Player Manager Addon Only${NC}     ${GRAY}(Players Management)${NC}"
+    echo -e "  ${ORANGE}[5]${NC} ${WHITE}Version Changer Addon Only${NC}    ${GRAY}(Minecraft Version Switcher)${NC}"
+    echo -e "  ${ORANGE}[6]${NC} ${WHITE}Sync Uploaded Files & Rebuild${NC}  ${GRAY}(Link existing panel files & compile)${NC}"
+    echo -e "  ${ORANGE}[0]${NC} ${RED}Exit Manager${NC}"
+    echo ""
+    echo -ne "${DARK_ORANGE}┌──(${WHITE}root@xorvila-manager${DARK_ORANGE})-[~]${NC}\n${DARK_ORANGE}└─#${NC} Select an option [0-6]: "
+    read -r choice </dev/tty
+
+    SELECTED=()
+    case $choice in
+        1) SELECTED=(blue plugins player version) ;;
+        2) SELECTED=(blue) ;;
+        3) SELECTED=(plugins) ;;
+        4) SELECTED=(player) ;;
+        5) SELECTED=(version) ;;
+        6)
+            for key in blue plugins player version; do
+                if is_addon_files_present "$key"; then SELECTED+=("$key"); fi
+            done
+            if ((${#SELECTED[@]} -eq 0)); then
+                echo -e "\n${RED}[✘] No uploaded addon files detected in $PTERO_DIR!${NC}"
+                sleep 2
+                continue
+            fi
+            ;;
+        0)
+            echo -e "\n${ORANGE}[*] Exiting Xorvila Addon Manager. Goodbye!${NC}\n"
+            exit 0
+            ;;
+        *)
+            echo -e "\n${RED}[!] Invalid option. Please select between 0 and 6.${NC}"
+            sleep 1
+            continue
+            ;;
     esac
-  done
-  
-  configure_arix_tools_layout
-  build_panel
-  
-  banner
-  show_addon_status
-  print_box "SUCCESS: XORVILA ADDON DEPLOYMENT COMPLETE!" "$GREEN"
-  say "Logs stored securely at: ${WHITE}$LOG_FILE${RESET}"
-}
 
-main "$@"
+    echo -e "\n${ORANGE}[*] Preparing installation environment...${NC}"
+    prepare_deps
+    WORK_DIR="$(mktemp -d -t xorvila-addon.XXXXXX)"
+    touch "$LOG_FILE"
+
+    for addon in "${SELECTED[@]}"; do
+        case "$addon" in
+            blue) install_blue ;;
+            plugins) install_plugins ;;
+            player) install_player ;;
+            version) install_version_changer ;;
+        esac
+    done
+
+    configure_arix_tools_layout
+    build_panel
+
+    echo ""
+    echo -e "${DARK_ORANGE}══════════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}[★] SUCCESS: ALL SELECTED ADDONS DEPLOYED & BUILT SUCCESSFULLY!${NC}"
+    echo -e "${DARK_ORANGE}══════════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${GRAY}Logs saved at: $LOG_FILE${NC}"
+    echo ""
+    read -p "Press [Enter] to return to menu..." </dev/tty
+done
