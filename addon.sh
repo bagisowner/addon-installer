@@ -3,22 +3,22 @@ set -Eeuo pipefail
 
 # ==============================================================================
 #  ██╗  ██╗ ██████╗ ██████╗ ██╗   ██╗██╗██╗      █████╗      🎉 GOD-LEVEL EDITION
-#  ╚██╗██╔╝██╔═══██╗██╔══██╗██║   ██║██║██║     ██╔══██╗     Cyberpunk Orange UI
+#  ╚██╗██╔╝██╔═══██╗██╔══██╗██║   ██║██║██║     ██╔══██╗     White & Orange UI
 #   ╚███╔╝ ██║   ██║██████╔╝██║   ██║██║██║     ███████║     Arix Theme Tools
 #   ██╔██╗ ██║   ██║██╔══██╗╚██╗ ██╔╝██║██║     ██╔══██║     Auto-Build & Sync
 #  ██╔╝ ██╗╚██████╔╝██║  ██║ ╚████╔╝ ██║███████╗██║  ██║     v2.5 Professional
 # ==============================================================================
 
-# True-Color & Style Definitions
+# True-Color & Style Definitions (White & Cyberpunk Orange)
 ESC="\033"
+WHITE="${ESC}[97m"
+BOLD_WHITE="${ESC}[1;97m"
 ORANGE="${ESC}[38;5;208m"
 GOLD="${ESC}[38;5;214m"
-BRIGHT_ORANGE="${ESC}[38;5;216m"
-DARK_ORANGE="${ESC}[38;5;166m"
 RED="${ESC}[38;5;196m"
 GREEN="${ESC}[38;5;46m"
 CYAN="${ESC}[38;5;51m"
-GRAY="${ESC}[38;5;240m"
+GRAY="${ESC}[38;5;245m"
 DIM="${ESC}[2m"
 BOLD="${ESC}[1m"
 RESET="${ESC}[0m"
@@ -37,14 +37,14 @@ print_box() {
   local text="$1"
   local color="${2:-$ORANGE}"
   printf "${color}  ┌────────────────────────────────────────────────────────────┐${RESET}\n"
-  printf "${color}  │${RESET} ${BOLD}%-58s${RESET} ${color}│${RESET}\n" "$text"
+  printf "${color}  │${RESET} ${BOLD_WHITE}%-58s${RESET} ${color}│${RESET}\n" "$text"
   printf "${color}  └────────────────────────────────────────────────────────────┘${RESET}\n"
 }
 
-say()   { printf "${ORANGE}[✦ %s]${RESET} %s\n" "$APP_NAME" "$*"; }
-ok()    { printf "    ${GREEN}✔${RESET} %s\n" "$*"; }
-warn()  { printf "    ${GOLD}⚠${RESET} %s\n" "$*"; }
-fail()  { printf "    ${RED}✖${RESET} %s\n" "$*" >&2; }
+say()   { printf "${ORANGE}[✦ %s]${RESET} ${WHITE}%s${RESET}\n" "$APP_NAME" "$*"; }
+ok()    { printf "    ${GREEN}✔${RESET} ${WHITE}%s${RESET}\n" "$*"; }
+warn()  { printf "    ${GOLD}⚠${RESET} ${WHITE}%s${RESET}\n" "$*"; }
+fail()  { printf "    ${RED}✖${RESET} ${WHITE}%s${RESET}\n" "$*" >&2; }
 die()   { fail "$*"; exit 1; }
 
 spinner() {
@@ -55,7 +55,7 @@ spinner() {
   printf "    ${ORANGE}%s${RESET} " "$message"
   while kill -0 "$pid" 2>/dev/null; do
     i=$(( (i+1) % 10 ))
-    printf "\r    ${ORANGE}%s${RESET} %s" "${spin:$i:1}" "$message"
+    printf "\r    ${ORANGE}%s${RESET} ${WHITE}%s${RESET}" "${spin:$i:1}" "$message"
     sleep 0.1
   done
   printf "\r\033[K"
@@ -77,8 +77,8 @@ banner() {
   printf "    ██╔╝ ██╗╚██████╔╝██║  ██║ ╚████╔╝ ██║███████╗██║  ██║\n"
   printf "    ╚═╝  ╚═╝ ╚═════╝  ╚═╝  ╚═╝  ╚═══╝  ╚═╝╚══════╝╚═╝  ╚═╝\n"
   printf "${RESET}\n"
-  printf "${GOLD}         ✦ XORVILA PTERODACTYL ADDON MANAGER (ARIX EDITION) ✦         ${RESET}\n"
-  printf "${DIM}         Deep Status Engine • Auto Tools Layout • Production Build    ${RESET}\n\n"
+  printf "${BOLD_WHITE}         ✦ XORVILA PTERODACTYL ADDON MANAGER (ARIX EDITION) ✦         ${RESET}\n"
+  printf "${GRAY}         Deep Status Engine • Auto Tools Layout • Production Build    ${RESET}\n\n"
 }
 
 need_cmd() { command -v "$1" >/dev/null 2>&1 || die "Required command '$1' is missing. Install it and retry."; }
@@ -174,7 +174,7 @@ is_built_in_assets() {
 
 show_addon_status() {
   printf "${ORANGE}  ┌──────────────────────────────────────────────────────────────────────────┐${RESET}\n"
-  printf "${ORANGE}  │${RESET} ${BOLD}%-27s %-28s %-16s${RESET} ${ORANGE}│${RESET}\n" " ADDON (TOOLS SIDEBAR)" " PANEL STATUS" " BUNDLE"
+  printf "${ORANGE}  │${RESET} ${BOLD_WHITE}%-27s %-28s %-16s${RESET} ${ORANGE}│${RESET}\n" " ADDON (TOOLS SIDEBAR)" " PANEL STATUS" " BUNDLE"
   printf "${ORANGE}  ├──────────────────────────────────────────────────────────────────────────┤${RESET}\n"
 
   local items=(
@@ -210,10 +210,10 @@ show_addon_status() {
     if find_zip "$zip_name" >/dev/null 2>&1; then
       z_status="${GREEN}✔ Zip Ready${RESET}"
     else
-      z_status="${DIM}No Zip${RESET}"
+      z_status="${GRAY}No Zip${RESET}"
     fi
 
-    printf "${ORANGE}  │${RESET} ${BOLD}%-27s${RESET} %-36b %-20b ${ORANGE}│${RESET}\n" "  $label" "$p_status" "$z_status"
+    printf "${ORANGE}  │${RESET} ${WHITE}%-27s${RESET} %-36b %-20b ${ORANGE}│${RESET}\n" "  $label" "$p_status" "$z_status"
   done
   printf "${ORANGE}  └──────────────────────────────────────────────────────────────────────────┘${RESET}\n\n"
 }
@@ -222,13 +222,13 @@ check_panel() {
   [[ -d "$PANEL_DIR" ]] || die "Panel directory not found: $PANEL_DIR"
   [[ -f "$PANEL_DIR/artisan" && -f "$PANEL_DIR/routes/api-client.php" && -f "$PANEL_DIR/resources/scripts/routers/routes.ts" ]] || die "'$PANEL_DIR' is not a valid Pterodactyl source root."
   detect_addon_dir
-  ok "Pterodactyl root verified: $PANEL_DIR"
+  ok "Pterodactyl root verified: ${WHITE}$PANEL_DIR${RESET}"
   show_addon_status
 }
 
 confirm() { 
   local answer; 
-  printf "${GOLD}  ?${RESET} %s [y/N]: " "$1"
+  printf "${GOLD}  ?${RESET} ${WHITE}%s [y/N]: ${RESET}" "$1"
   read -r answer; 
   [[ "$answer" =~ ^([yY]|[yY][eE][sS])$ ]]; 
 }
@@ -647,20 +647,20 @@ build_panel() {
 
 menu() {
   printf "\n${ORANGE}  ┌────────────────────────────────────────────────────────────┐${RESET}\n"
-  printf "${ORANGE}  │${RESET} ${BOLD}                   SELECT INSTALLATION MODE                 ${RESET}${ORANGE}│${RESET}\n"
+  printf "${ORANGE}  │${RESET} ${BOLD_WHITE}                   SELECT INSTALLATION MODE                 ${RESET}${ORANGE}│${RESET}\n"
   printf "${ORANGE}  ├────────────────────────────────────────────────────────────┤${RESET}\n"
-  printf "${ORANGE}  │${RESET}   ${BOLD}1)${RESET} Full Setup / Install All 4 Addons & Build               ${ORANGE}│${RESET}\n"
-  printf "${ORANGE}  │${RESET}   ${BOLD}2)${RESET} Properties Addon Only                                  ${ORANGE}│${RESET}\n"
-  printf "${ORANGE}  │${RESET}   ${BOLD}3)${RESET} Plugins Addon Only                                     ${ORANGE}│${RESET}\n"
-  printf "${ORANGE}  │${RESET}   ${BOLD}4)${RESET} Player Manager Addon Only                              ${ORANGE}│${RESET}\n"
-  printf "${ORANGE}  │${RESET}   ${BOLD}5)${RESET} Version Changer Addon Only                             ${ORANGE}│${RESET}\n"
-  printf "${ORANGE}  │${RESET}   ${BOLD}6)${RESET} Select Multiple Custom Addons                          ${ORANGE}│${RESET}\n"
-  printf "${ORANGE}  │${RESET}   ${BOLD}7)${RESET} Sync Uploaded Files & Rebuild Only                     ${ORANGE}│${RESET}\n"
-  printf "${ORANGE}  │${RESET}   ${BOLD}0)${RESET} Exit Manager                                           ${ORANGE}│${RESET}\n"
+  printf "${ORANGE}  │${RESET}   ${BOLD}1)${RESET} ${WHITE}Full Setup / Install All 4 Addons & Build               ${ORANGE}│${RESET}\n"
+  printf "${ORANGE}  │${RESET}   ${BOLD}2)${RESET} ${WHITE}Properties Addon Only                                  ${ORANGE}│${RESET}\n"
+  printf "${ORANGE}  │${RESET}   ${BOLD}3)${RESET} ${WHITE}Plugins Addon Only                                     ${ORANGE}│${RESET}\n"
+  printf "${ORANGE}  │${RESET}   ${BOLD}4)${RESET} ${WHITE}Player Manager Addon Only                              ${ORANGE}│${RESET}\n"
+  printf "${ORANGE}  │${RESET}   ${BOLD}5)${RESET} ${WHITE}Version Changer Addon Only                             ${ORANGE}│${RESET}\n"
+  printf "${ORANGE}  │${RESET}   ${BOLD}6)${RESET} ${WHITE}Select Multiple Custom Addons                          ${ORANGE}│${RESET}\n"
+  printf "${ORANGE}  │${RESET}   ${BOLD}7)${RESET} ${WHITE}Sync Uploaded Files & Rebuild Only                     ${ORANGE}│${RESET}\n"
+  printf "${ORANGE}  │${RESET}   ${BOLD}0)${RESET} ${WHITE}Exit Manager                                           ${ORANGE}│${RESET}\n"
   printf "${ORANGE}  └────────────────────────────────────────────────────────────┘${RESET}\n\n"
   
   local choice
-  printf "${GOLD}  ➜${RESET} Enter your choice [0-7]: "
+  printf "${GOLD}  ➜${RESET} ${WHITE}Enter your choice [0-7]: ${RESET}"
   read -r choice
   case "$choice" in
     1) SELECTED=(blue plugins player version) ;;
@@ -712,7 +712,7 @@ main() {
   banner
   show_addon_status
   print_box "SUCCESS: XORVILA ADDON DEPLOYMENT COMPLETE!" "$GREEN"
-  say "Logs stored securely at: $LOG_FILE"
+  say "Logs stored securely at: ${WHITE}$LOG_FILE${RESET}"
 }
 
 main "$@"
