@@ -182,7 +182,7 @@ show_addon_status() {
             z_status="${GRAY}Missing${NC}"
         fi
 
-        printf "  %-28s  %-22s  %-10s\n" "${WHITE}${label}${NC}" "$p_status" "$z_status"
+        echo -e "  $(printf "%-28s" "${WHITE}${label}${NC}")  $(printf "%-22s" "$p_status")  $(printf "%-10s" "$z_status")"
     done
     echo -e "${DARK_ORANGE}──────────────────────────────────────────────────────────────────────${NC}"
     echo ""
