@@ -94,7 +94,7 @@ is_addon_files_present() {
             fe="$PTERO_DIR/resources/scripts/components/server/versionchanger/VersionChangerContainer.tsx"
             be="$PTERO_DIR/app/Http/Controllers/Api/Client/Servers/VersionChanger/VersionChangerController.php"
             ;;
-    es:
+    esac
     if [[ -n "$fe" && -f "$fe" && -n "$be" && -f "$be" ]]; then
         return 0
     elif [[ ( -n "$fe" && -f "$fe" ) || ( -n "$be" && -f "$be" ) ]]; then
